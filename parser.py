@@ -1,6 +1,6 @@
 import re
 
-plugin_regex = re.compile(r'(\d+)\s+\(\d+\)\s+-\s+(.+)')
+plugin_regex = re.compile(r'(\d+)\s+\(\d+\)\s+-\s+([^<]+)')
 ip_regex = re.compile(r'(\d+\.\d+\.\d+\.\d+)\s+\(tcp/(\d+)/(.*?)\)')
 
 def parse_report(report, valid_plugins):
@@ -21,7 +21,7 @@ def parse_report(report, valid_plugins):
 
                 if pid in valid_plugins:
                     current_plugin = pid
-                    plugin_name = p.group(2)
+                    plugin_name = p.group(2).split("<")[0].strip()
                 else:
                     current_plugin = None
 

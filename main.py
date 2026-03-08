@@ -48,7 +48,7 @@ def main():
             v["ip"],
             v["port"],
             v["service"],
-            v["plugin_name"],
+            v["plugin_name"].replace(" ", "_"),
             OUTPUT_DIR
         ])
 

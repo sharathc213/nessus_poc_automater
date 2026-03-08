@@ -6,6 +6,11 @@ SERVICE=$3
 NAME=$4
 OUTDIR=$5
 
+# run only for web services
+if [ "$SERVICE" != "www" ]; then
+    exit 0
+fi
+
 DIR="$OUTDIR/$NAME"
 mkdir -p "$DIR"
 
@@ -13,7 +18,7 @@ OUTFILE="$DIR/${IP}-${PORT}.txt"
 
 PROTO="http"
 
-# detect HTTPS
+# Detect HTTPS
 if echo | timeout 3 openssl s_client -connect $IP:$PORT 2>/dev/null | grep -q "BEGIN CERTIFICATE"; then
     PROTO="https"
 fi
@@ -23,7 +28,7 @@ URL="$PROTO://$IP:$PORT"
 CMD="eyewitness --web -d $DIR --single $URL --no-prompt"
 
 echo "Target: $IP:$PORT" > "$OUTFILE"
-echo "Plugin: Apache Tomcat Default Files (12085)" >> "$OUTFILE"
+echo "Plugin: Nessus SYN Scanner (11219)" >> "$OUTFILE"
 echo "" >> "$OUTFILE"
 
 echo "Command:" >> "$OUTFILE"
@@ -32,4 +37,4 @@ echo "" >> "$OUTFILE"
 
 echo "Output:" >> "$OUTFILE"
 
-timeout 300 $CMD >> "$OUTFILE" 2>&1
+timeout 300 bash -c "$CMD" >> "$OUTFILE" 2>&1
