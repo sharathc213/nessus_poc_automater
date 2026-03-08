@@ -2,7 +2,8 @@ import os
 import argparse
 import subprocess
 from parser import parse_report
-
+import re
+import html
 PLUGIN_DIR = "plugins"
 OUTPUT_DIR = "output"
 
@@ -16,6 +17,12 @@ def get_plugins():
 
     return plugins
 
+
+def clean_name(name):
+    name = html.unescape(name)              # convert &lt; -> <
+    name = re.sub(r'[<>:"/\\|?*]', '', name) # remove unsafe characters
+    name = name.replace(" ", "_")
+    return name
 
 def main():
 
@@ -48,7 +55,7 @@ def main():
             v["ip"],
             v["port"],
             v["service"],
-            v["plugin_name"].replace(" ", "_"),
+            clean_name(v["plugin_name"]),
             OUTPUT_DIR
         ])
 

@@ -6,7 +6,7 @@ SERVICE=$3
 NAME=$4
 OUTDIR=$5
 
-TESTSSL="../tools/testssl.sh/testssl.sh"
+TESTSSL="tools/testssl.sh/testssl.sh"
 
 DIR="$OUTDIR/$NAME"
 mkdir -p "$DIR"

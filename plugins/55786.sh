@@ -6,7 +6,7 @@ SERVICE=$3
 NAME=$4
 OUTDIR=$5
 
-DIR="$OUTDIR/$VULN"
+DIR="$OUTDIR/$NAME"
 mkdir -p "$DIR"
 
 OUTFILE="$DIR/${IP}-${PORT}.txt"
