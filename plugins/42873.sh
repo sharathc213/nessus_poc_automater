@@ -6,7 +6,8 @@ SERVICE=$3
 NAME=$4
 OUTDIR=$5
 
-TESTSSL="$(dirname "$0")/../tools/testssl.sh/testssl.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TESTSSL="$SCRIPT_DIR/../tools/testssl.sh/testssl.sh"
 
 DIR="$OUTDIR/$NAME"
 mkdir -p "$DIR"

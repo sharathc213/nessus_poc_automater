@@ -4,6 +4,7 @@ import subprocess
 from parser import parse_report
 import re
 import html
+
 PLUGIN_DIR = "plugins"
 OUTPUT_DIR = "output"
 
@@ -24,14 +25,15 @@ def clean_name(name):
     name = name.replace(" ", "_")
     return name
 
+
 def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--report", required=True)
+    parser.add_argument("-p", "--plugin", help="Run only a specific plugin ID")
 
     args = parser.parse_args()
 
-    # create output directory
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     plugins = get_plugins()
@@ -41,6 +43,10 @@ def main():
     vulns = parse_report(args.report, plugins)
 
     for v in vulns:
+
+        # filter plugin if user specified one
+        if args.plugin and v["plugin_id"] != args.plugin:
+            continue
 
         script = f"{PLUGIN_DIR}/{v['plugin_id']}.sh"
 
