@@ -18,7 +18,7 @@ echo "Plugin: VMware vCenter Server Out-of-bounds Write (183957)" >> "$OUTFILE"
 echo "" >> "$OUTFILE"
 
 # Try nmap detection
-CMD="nmap -sV -p $PORT --script http-title,ssl-cert $IP"
+CMD="nmap -sVC -p $PORT --script http-title,ssl-cert $IP"
 
 echo "Command:" >> "$OUTFILE"
 echo "$CMD" >> "$OUTFILE"

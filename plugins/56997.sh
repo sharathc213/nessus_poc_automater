@@ -18,7 +18,7 @@ echo "Plugin: VMware ESX / ESXi Unsupported Version Detection (56997)" >> "$OUTF
 echo "" >> "$OUTFILE"
 
 # Run nmap version detection
-NMAP_CMD="nmap -sV -p $PORT $IP"
+NMAP_CMD="nmap -sVC -p $PORT $IP"
 
 echo "Command:" >> "$OUTFILE"
 echo "$NMAP_CMD" >> "$OUTFILE"

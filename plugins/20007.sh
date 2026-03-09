@@ -11,7 +11,7 @@ mkdir -p "$DIR"
 
 OUTFILE="$DIR/${IP}-${PORT}.txt"
 
-CMD="nmap -sV -Pn --script ssl-enum-ciphers -p $PORT $IP"
+CMD="nmap -sVC -Pn --script ssl-enum-ciphers -p $PORT $IP"
 
 echo "Target: $IP:$PORT" > "$OUTFILE"
 echo "Plugin: $NAME" >> "$OUTFILE"

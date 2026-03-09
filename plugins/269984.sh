@@ -11,7 +11,7 @@ mkdir -p "$DIR"
 
 OUTFILE="$DIR/${IP}-${PORT}.txt"
 
-CMD="nmap -Pn -sV -p $PORT $IP"
+CMD="nmap -Pn -sVC -p $PORT $IP"
 
 echo "Target: $IP:$PORT" > "$OUTFILE"
 echo "Plugin: OpenSSH < 10.1 Multiple Vulnerabilities (269984)" >> "$OUTFILE"

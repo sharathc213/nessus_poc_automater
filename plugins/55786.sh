@@ -11,7 +11,7 @@ mkdir -p "$DIR"
 
 OUTFILE="$DIR/${IP}-${PORT}.txt"
 
-CMD="nmap -sV -Pn -p $PORT --script oracle-tns-version,oracle-sid-brute $IP"
+CMD="nmap -sVC -Pn -p $PORT --script oracle-tns-version,oracle-sid-brute $IP"
 
 echo "Target: $IP:$PORT" > "$OUTFILE"
 echo "Plugin: Oracle Database Unsupported Version Detection" >> "$OUTFILE"
