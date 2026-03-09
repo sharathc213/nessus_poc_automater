@@ -37,4 +37,5 @@ timeout 15 bash -c "$CMD" >> "$OUTFILE" 2>&1
 echo "" >> "$OUTFILE"
 echo "Possible Tomcat Indicators:" >> "$OUTFILE"
 
-grep -Ei "tomcat|coyote" "$OUTFILE" >> "$OUTFILE"
+SERVER_HEADER=$(grep -i "server:" "$OUTFILE")
+echo "$SERVER_HEADER" >> "$OUTFILE"
