@@ -11,10 +11,12 @@ if [ "$SERVICE" != "www" ]; then
     exit 0
 fi
 
-DIR="$OUTDIR/$NAME"
-mkdir -p "$DIR"
+BASE_DIR="$OUTDIR/$NAME"
+TARGET_DIR="$BASE_DIR/${IP}-${PORT}"
 
-OUTFILE="$DIR/${IP}-${PORT}.txt"
+mkdir -p "$TARGET_DIR"
+
+OUTFILE="$TARGET_DIR/${IP}-${PORT}.txt"
 
 PROTO="http"
 
@@ -25,7 +27,7 @@ fi
 
 URL="$PROTO://$IP:$PORT"
 
-CMD="eyewitness --web -d $DIR --single $URL --no-prompt"
+CMD="eyewitness --web -d $TARGET_DIR --single $URL --no-prompt"
 
 echo "Target: $IP:$PORT" > "$OUTFILE"
 echo "Plugin: Nessus SYN Scanner (11219)" >> "$OUTFILE"
