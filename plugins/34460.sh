@@ -15,8 +15,16 @@ echo "Target: $IP:$PORT" > "$OUTFILE"
 echo "Plugin: Unsupported Web Server Detection (34460)" >> "$OUTFILE"
 echo "" >> "$OUTFILE"
 
-# Try HTTPS first
-CMD="curl -k -I https://$IP:$PORT"
+PROTO="http"
+CURL_OPTS="-I"
+
+# Detect HTTPS using openssl
+if echo | timeout 3 openssl s_client -connect $IP:$PORT 2>/dev/null | grep -q "BEGIN CERTIFICATE"; then
+    PROTO="https"
+    CURL_OPTS="-k -I"
+fi
+
+CMD="curl $CURL_OPTS $PROTO://$IP:$PORT"
 
 echo "Command:" >> "$OUTFILE"
 echo "$CMD" >> "$OUTFILE"
@@ -25,21 +33,9 @@ echo "Output:" >> "$OUTFILE"
 
 timeout 15 bash -c "$CMD" >> "$OUTFILE" 2>&1
 
-# If HTTPS did not return server header, try HTTP
-if ! grep -qi "server:" "$OUTFILE"; then
-
-    CMD="curl -I http://$IP:$PORT"
-
-    echo "" >> "$OUTFILE"
-    echo "Command:" >> "$OUTFILE"
-    echo "$CMD" >> "$OUTFILE"
-    echo "" >> "$OUTFILE"
-    echo "Output:" >> "$OUTFILE"
-
-    timeout 15 bash -c "$CMD" >> "$OUTFILE" 2>&1
-fi
-
 echo "" >> "$OUTFILE"
 echo "Extracted Server Header:" >> "$OUTFILE"
 
-grep -i "server:" "$OUTFILE" >> "$OUTFILE"
+SERVER_HEADER=$(grep -i "server:" "$OUTFILE")
+
+echo "$SERVER_HEADER" >> "$OUTFILE"
