@@ -22,8 +22,8 @@ def get_plugins():
 
 
 def clean_name(name):
-    name = html.unescape(name)                # convert &lt; -> <
-    name = re.sub(r'[<>:"/\\|?*]', '', name)   # remove unsafe characters
+    name = html.unescape(name)
+    name = re.sub(r'[<>:"/\\|?*]', '', name)
     name = name.replace(" ", "_")
     return name
 
@@ -42,7 +42,6 @@ def load_completed(resume_file):
     completed = set()
 
     if os.path.exists(resume_file):
-
         with open(resume_file) as f:
             for line in f:
                 completed.add(line.strip())
@@ -56,25 +55,31 @@ def save_completed(resume_file, entry):
         f.write(entry + "\n")
 
 
-def main():
+def get_reports(path):
+    """
+    Return list of report files.
+    Accepts single file or directory
+    """
 
-    parser = argparse.ArgumentParser()
+    if os.path.isfile(path):
+        return [path]
 
-    parser.add_argument("-r", "--report", required=True)
-    parser.add_argument("-p", "--plugin", help="Run only a specific plugin ID")
-    parser.add_argument("--resume", action="store_true", help="Resume previous run")
+    reports = []
 
-    args = parser.parse_args()
+    for f in os.listdir(path):
+        if f.endswith(".html"):
+            reports.append(os.path.join(path, f))
 
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    return reports
 
-    plugins = get_plugins()
 
-    print("[+] Loaded plugins:", plugins)
+def process_report(report, plugins, args):
 
-    vulns = parse_report(args.report, plugins)
+    print(f"\n[+] Processing report: {report}")
 
-    resume_file = get_resume_file(args.report)
+    vulns = parse_report(report, plugins)
+
+    resume_file = get_resume_file(report)
 
     completed = load_completed(resume_file) if args.resume else set()
 
@@ -108,6 +113,37 @@ def main():
 
         if result.returncode == 0:
             save_completed(resume_file, key)
+
+
+def main():
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("-r", "--report", required=True,
+                        help="Nessus report file or folder")
+
+    parser.add_argument("-p", "--plugin",
+                        help="Run only a specific plugin ID")
+
+    parser.add_argument("--resume", action="store_true",
+                        help="Resume previous run")
+
+    args = parser.parse_args()
+
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+    plugins = get_plugins()
+
+    print("[+] Loaded plugins:", plugins)
+
+    reports = get_reports(args.report)
+
+    if not reports:
+        print("[-] No HTML reports found")
+        return
+
+    for report in reports:
+        process_report(report, plugins, args)
 
 
 if __name__ == "__main__":
