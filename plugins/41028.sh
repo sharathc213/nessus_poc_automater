@@ -12,7 +12,7 @@ if [ "$SERVICE" != "snmp" ]; then
 fi
 
 DIR="$OUTDIR/$NAME"
-TARGET_DIR="$DIR/${IP}-${PORT}"
+TARGET_DIR="$DIR"
 
 mkdir -p "$TARGET_DIR"
 
