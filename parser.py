@@ -1,7 +1,7 @@
 import re
 
 plugin_regex = re.compile(r'(\d+)\s+\(\d+\)\s+-\s+([^<]+)')
-ip_regex = re.compile(r'(\d+\.\d+\.\d+\.\d+)\s+\(tcp/(\d+)/(.*?)\)')
+ip_regex = re.compile(r'(\d+\.\d+\.\d+\.\d+)\s+\(tcp/(\d+)(?:/([^)]+))?\)')
 
 def parse_report(report, valid_plugins):
 
@@ -11,37 +11,39 @@ def parse_report(report, valid_plugins):
     plugin_name = None
 
     with open(report, "r", encoding="utf-8", errors="ignore") as f:
+        data = f.read()
 
-        for line in f:
+    lines = data.splitlines()
 
-            # detect plugin
-            p = plugin_regex.search(line)
-            if p:
-                pid = p.group(1)
+    for line in lines:
 
-                if pid in valid_plugins:
-                    current_plugin = pid
-                    plugin_name = p.group(2).split("<")[0].strip()
-                else:
-                    current_plugin = None
+        # detect plugin
+        p = plugin_regex.search(line)
+        if p:
+            pid = p.group(1)
 
-                continue
+            if pid in valid_plugins:
+                current_plugin = pid
+                plugin_name = p.group(2).strip()
+            else:
+                current_plugin = None
 
-            # detect ip:port/service
-            if current_plugin:
-                m = ip_regex.search(line)
+            continue
 
-                if m:
-                    ip = m.group(1)
-                    port = m.group(2)
-                    service = m.group(3)
+        if current_plugin:
+            m = ip_regex.search(line)
 
-                    results.append({
-                        "plugin_id": current_plugin,
-                        "plugin_name": plugin_name,
-                        "ip": ip,
-                        "port": port,
-                        "service": service
-                    })
+            if m:
+                ip = m.group(1)
+                port = m.group(2)
+                service = m.group(3) if m.group(3) else ""
+
+                results.append({
+                    "plugin_id": current_plugin,
+                    "plugin_name": plugin_name,
+                    "ip": ip,
+                    "port": port,
+                    "service": service
+                })
 
     return results
