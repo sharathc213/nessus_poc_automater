@@ -26,5 +26,3 @@ timeout 120 bash -c "$CMD" >> "$OUTFILE" 2>&1
 
 echo "" >> "$OUTFILE"
 echo "Anonymous Cipher Suites:" >> "$OUTFILE"
-
-grep -i "anon" "$OUTFILE" >> "$OUTFILE"
