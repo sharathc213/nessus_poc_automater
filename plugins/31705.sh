@@ -6,8 +6,6 @@ SERVICE=$3
 NAME=$4
 OUTDIR=$5
 
-BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-
 DIR="$OUTDIR/$NAME"
 mkdir -p "$DIR"
 
@@ -17,30 +15,16 @@ echo "Target: $IP:$PORT" > "$OUTFILE"
 echo "Plugin: SSL Anonymous Cipher Suites Supported (31705)" >> "$OUTFILE"
 echo "" >> "$OUTFILE"
 
-# Detect protocol
-PROTO="https"
-
-if ! echo | timeout 3 openssl s_client -connect $IP:$PORT 2>/dev/null | grep -q "BEGIN CERTIFICATE"; then
-    PROTO="http"
-fi
-
-echo "Protocol detected: $PROTO" >> "$OUTFILE"
-echo "" >> "$OUTFILE"
+CMD="nmap -p $PORT --script ssl-enum-ciphers $IP"
 
 echo "Command:" >> "$OUTFILE"
-echo "openssl s_client -connect $IP:$PORT -cipher aNULL" >> "$OUTFILE"
+echo "$CMD" >> "$OUTFILE"
 echo "" >> "$OUTFILE"
-
 echo "Output:" >> "$OUTFILE"
 
-timeout 20 openssl s_client -connect $IP:$PORT -cipher aNULL \
-    >> "$OUTFILE" 2>&1
+timeout 120 bash -c "$CMD" >> "$OUTFILE" 2>&1
 
 echo "" >> "$OUTFILE"
-echo "Analysis:" >> "$OUTFILE"
+echo "Anonymous Cipher Suites:" >> "$OUTFILE"
 
-if grep -qi "Cipher is" "$OUTFILE"; then
-    echo "Anonymous cipher supported (Potential vulnerability)" >> "$OUTFILE"
-else
-    echo "Anonymous cipher NOT supported" >> "$OUTFILE"
-fi
+grep -i "anon" "$OUTFILE" >> "$OUTFILE"
