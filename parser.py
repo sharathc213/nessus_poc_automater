@@ -1,45 +1,53 @@
 import re
 
-plugin_regex = re.compile(r'(\d+)\s+\(\d+\)\s+-\s+(.+?)(?:<|$)')
-ip_regex = re.compile(r'(\d+\.\d+\.\d+\.\d+)\s+\((?:tcp|udp)/(\d+)(?:/([^)]+))?\)')
+plugin_regex = re.compile(r'(\d+)\s+\(\d+\)\s+-\s+([^<]+)')
+host_regex = re.compile(r'(\d+\.\d+\.\d+\.\d+)\s+\((tcp|udp)/(\d+)(?:/([^)]+))?\)')
+risk_regex = re.compile(
+    r'Risk Factor.*?</div>\s*<div[^>]*>\s*(None|Low|Medium|High|Critical)',
+    re.IGNORECASE | re.DOTALL
+)
 
-def parse_report(report, valid_plugins):
+def parse_report(report, valid_plugins=None):
 
     results = []
 
-    current_plugin = None
-    plugin_name = None
-
     with open(report, "r", encoding="utf-8", errors="ignore") as f:
+        data = f.read()
 
-        for line in f:
+    plugins = list(plugin_regex.finditer(data))
 
-            p = plugin_regex.search(line)
-            if p:
-                pid = p.group(1)
+    for i, p in enumerate(plugins):
 
-                if pid in valid_plugins:
-                    current_plugin = pid
-                    plugin_name = p.group(2).strip()
-                else:
-                    current_plugin = None
+        pid = p.group(1)
+        pname = p.group(2).strip()
 
-                continue
+        if valid_plugins is not None and pid not in valid_plugins:
+            continue
 
-            if current_plugin:
-                m = ip_regex.search(line)
+        start = p.end()
 
-                if m:
-                    ip = m.group(1)
-                    port = m.group(2)
-                    service = m.group(3) if m.group(3) else ""
+        if i + 1 < len(plugins):
+            end = plugins[i+1].start()
+        else:
+            end = len(data)
 
-                    results.append({
-                        "plugin_id": current_plugin,
-                        "plugin_name": plugin_name,
-                        "ip": ip,
-                        "port": port,
-                        "service": service
-                    })
+        section = data[start:end]
 
+        hosts = host_regex.findall(section)
+        risk_match = risk_regex.search(section)
+
+        risk = "Unknown"
+        if risk_match:
+            risk = risk_match.group(1).strip()
+
+        for ip, proto, port, service in hosts:
+            results.append({
+            "plugin_id": pid,
+            "plugin_name": pname,
+            "ip": ip,
+            "port": port,
+            "protocol": proto,
+            "service": service,
+            "risk": risk
+        })
     return results

@@ -13,8 +13,10 @@ fi
 
 BASE_DIR="$OUTDIR/$NAME"
 TARGET_DIR="$BASE_DIR/${IP}-${PORT}"
+FINAL_SCREEN_DIR="$BASE_DIR"
 
 mkdir -p "$TARGET_DIR"
+mkdir -p "$FINAL_SCREEN_DIR"
 
 OUTFILE="$TARGET_DIR/${IP}-${PORT}.txt"
 
@@ -40,3 +42,13 @@ echo "" >> "$OUTFILE"
 echo "Output:" >> "$OUTFILE"
 
 timeout 300 bash -c "$CMD" >> "$OUTFILE" 2>&1
+
+# Move screenshot if it exists
+SCREENSHOT=$(find "$TARGET_DIR/screens" -type f \( -iname "*.png" -o -iname "*.jpg" \) 2>/dev/null | head -n 1)
+
+if [ -n "$SCREENSHOT" ]; then
+    cp "$SCREENSHOT" "$FINAL_SCREEN_DIR/${IP}-${PORT}.png"
+fi
+
+# cleanup
+rm -rf "$TARGET_DIR"

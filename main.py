@@ -9,10 +9,14 @@ import hashlib
 PLUGIN_DIR = "plugins"
 OUTPUT_DIR = "output"
 LOG_DIR = "logs"
+ASSET_FILE = "assets.txt"
 
 
 def get_plugins():
     plugins = []
+
+    if not os.path.exists(PLUGIN_DIR):
+        return plugins
 
     for f in os.listdir(PLUGIN_DIR):
         if f.endswith(".sh"):
@@ -56,10 +60,6 @@ def save_completed(resume_file, entry):
 
 
 def get_reports(path):
-    """
-    Return list of report files.
-    Accepts single file or directory
-    """
 
     if os.path.isfile(path):
         return [path]
@@ -73,20 +73,35 @@ def get_reports(path):
     return reports
 
 
-def process_report(report, plugins, args):
+# ---------------------------
+# POC MODE
+# ---------------------------
+
+def process_report_poc(report, plugins, args):
 
     print(f"\n[+] Processing report: {report}")
 
-    vulns = parse_report(report, plugins)
+    if args.plugin:
+        vulns = parse_report(report, args.plugin)
+    else:
+        vulns = parse_report(report, plugins)
 
     resume_file = get_resume_file(report)
 
     completed = load_completed(resume_file) if args.resume else set()
 
+    severity_filter = None
+    if args.severity:
+        severity_filter = [s.lower() for s in args.severity]
+
     for v in vulns:
 
-        if args.plugin and v["plugin_id"] != args.plugin:
+        if args.plugin and v["plugin_id"] not in args.plugin:
             continue
+
+        if severity_filter:
+            if v.get("risk", "").lower() not in severity_filter:
+                continue
 
         key = f"{v['plugin_id']}|{v['ip']}|{v['port']}"
 
@@ -106,7 +121,7 @@ def process_report(report, plugins, args):
             script,
             v["ip"],
             v["port"],
-            v["service"],
+            v.get("service", ""),
             clean_name(v["plugin_name"]),
             OUTPUT_DIR
         ])
@@ -115,19 +130,94 @@ def process_report(report, plugins, args):
             save_completed(resume_file, key)
 
 
+# ---------------------------
+# ASSETS MODE
+# ---------------------------
+def process_report_assets(report, args):
+
+    print(f"[+] Processing report: {report}")
+
+    vulns = parse_report(report, None)
+
+    severity_filter = None
+    if args.severity:
+        severity_filter = [s.lower() for s in args.severity]
+
+    plugin_group = {}
+    ip_group = {}
+
+    for v in vulns:
+
+        if args.plugin and v["plugin_id"] not in args.plugin:
+            continue
+
+        if severity_filter:
+            if v.get("risk", "").lower() not in severity_filter:
+                continue
+        else:
+            if v.get("risk", "").lower() == "none":
+                continue
+
+        plugin_key = f"{v['plugin_id']} - {v['plugin_name']}"
+        ip = v["ip"]
+
+        if plugin_key not in plugin_group:
+            plugin_group[plugin_key] = []
+
+        entry = f"{ip} - {v.get('protocol','tcp')}/{v['port']}"
+
+        if entry not in plugin_group[plugin_key]:
+            plugin_group[plugin_key].append(entry)
+
+        vuln_entry = f"{v['plugin_id']} - {v['plugin_name']}"
+
+        if ip not in ip_group:
+            ip_group[ip] = []
+
+        if vuln_entry not in ip_group[ip]:
+            ip_group[ip].append(vuln_entry)
+
+    return ip_group if args.ip_wise else plugin_group
+# MAIN
+# ---------------------------
+
 def main():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-r", "--report", required=True,
-                        help="Nessus report file or folder")
+    parser.add_argument(
+        "mode",
+        choices=["poc", "assets"],
+        help="Run mode: poc or assets"
+    )
 
-    parser.add_argument("-p", "--plugin",
-                        help="Run only a specific plugin ID")
+    parser.add_argument(
+        "-r", "--report",
+        required=True,
+        help="Nessus report file or folder"
+    )
 
-    parser.add_argument("--resume", action="store_true",
-                        help="Resume previous run")
+    parser.add_argument(
+        "-p", "--plugin",
+        nargs="+",
+        help="Run only specific plugin IDs (multiple allowed)"
+    )
+    parser.add_argument(
+        "-s", "--severity",
+        nargs="+",
+        choices=["critical", "high", "medium", "low", "none"],
+        help="Filter findings by severity"
+    )
 
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume previous run (poc mode only)"
+    )
+    parser.add_argument(
+        "--ip-wise",
+        action="store_true",
+        help="Group assets by IP instead of vulnerability")
     args = parser.parse_args()
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -142,8 +232,45 @@ def main():
         print("[-] No HTML reports found")
         return
 
-    for report in reports:
-        process_report(report, plugins, args)
+    # ---------------------------
+    # POC MODE
+    # ---------------------------
+
+    if args.mode == "poc":
+
+        for report in reports:
+            process_report_poc(report, plugins, args)
+
+    # ---------------------------
+    # ASSETS MODE
+    # ---------------------------
+
+    if args.mode == "assets":
+
+        with open(ASSET_FILE, "w") as outfile:
+
+            for report in reports:
+
+                grouped = process_report_assets(report, args)
+
+                for key, values in grouped.items():
+
+                    print(key)
+                    outfile.write(key + "\n")
+
+                    for v in values:
+                                     # skip informational findings
+                        
+                        if isinstance(v, dict) and v.get("risk", "").lower() == "none":
+                            print(v.get("risk"))
+                            continue
+                        print(v)
+                        outfile.write(v + "\n")
+
+                    print()
+                    outfile.write("\n")
+
+        print(f"\n[+] Asset list saved to {ASSET_FILE}")
 
 
 if __name__ == "__main__":
