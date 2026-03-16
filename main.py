@@ -150,13 +150,13 @@ def process_report_assets(report, args):
 
         if args.plugin and v["plugin_id"] not in args.plugin:
             continue
-
-        if severity_filter:
-            if v.get("risk", "").lower() not in severity_filter:
-                continue
-        else:
-            if v.get("risk", "").lower() == "none":
-                continue
+        if not args.plugin:
+            if severity_filter:
+                if v.get("risk", "").lower() not in severity_filter:
+                    continue
+            else:
+                if v.get("risk", "").lower() == "none":
+                    continue
 
         plugin_key = f"{v['plugin_id']} - {v['plugin_name']}"
         ip = v["ip"]
@@ -257,17 +257,6 @@ def main():
 
                     print(key)
                     outfile.write(key + "\n")
-
-                    for v in values:
-                                     # skip informational findings
-                        
-                        if isinstance(v, dict) and v.get("risk", "").lower() == "none":
-                            print(v.get("risk"))
-                            continue
-                        print(v)
-                        outfile.write(v + "\n")
-
-                    print()
                     outfile.write("\n")
 
         print(f"\n[+] Asset list saved to {ASSET_FILE}")
