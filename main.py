@@ -6,7 +6,7 @@ from parser import parse_report
 from utils.common import *
 from modes import assets
 from modes.storage import append_data, load_data
-from modes.export_excel import export_to_excel
+from modes import export_m1, export_m2, export_m3
 # ---------------------------
 # HELPERS
 # ---------------------------
@@ -61,7 +61,13 @@ def main():
         default=2,
         help="Number of threads"
     )
-
+    parser.add_argument(
+        "-m", "--mode_type",
+        type=int,
+        choices=[1, 2, 3],
+        default=1,
+        help="1=default, 2=VLAN-IP, 3=VLAN-IP+Port"
+    )
     args = parser.parse_args()
 
     reports = get_reports(args.report)
@@ -108,7 +114,14 @@ def main():
         # ---------------------------
         # EXPORT FROM JSON
         # ---------------------------
-        export_to_excel(final_data)
+        if args.mode_type == 1:
+            export_m1.export_to_excel(final_data)
+
+        elif args.mode_type == 2:
+            export_m2.export_to_excel(final_data)
+
+        elif args.mode_type == 3:
+            export_m3.export_to_excel(final_data)
     elif args.mode == "dirb":
 
         for report in reports:

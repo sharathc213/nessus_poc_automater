@@ -23,13 +23,12 @@ def process(report, args):
         # ---------------------------
         # Severity Filtering
         # ---------------------------
+        # If the user specified severities in the terminal, we filter by them.
         if severity_filter:
             if v.get("risk", "").lower() not in severity_filter:
                 continue
-        else:
-            # Skip "none" by default
-            if v.get("risk", "").lower() == "none":
-                continue
+        # 🔥 REMOVED THE HARDCODED SKIP FOR "NONE" HERE!
+        # Now, if no severity is specified, it grabs everything, including "None".
 
         # ---------------------------
         # 🔥 Plugin Availability Check
@@ -47,7 +46,8 @@ def process(report, args):
             "vulnerability": f"{plugin_id} - {v['plugin_name']}",
             "asset": f"{v['ip']} ({v.get('protocol','tcp')}/{v['port']})",
             "severity": v.get("risk", "unknown").lower(),
-            "status": status   # 🔥 NEW FIELD
+            "status": status,
+            "plugin": plugin_id  # ✅ ADDED: This makes sure your export script can find the plugin ID!
         })
 
     return results

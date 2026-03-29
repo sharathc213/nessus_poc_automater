@@ -4,26 +4,26 @@ from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 
 
 def export_to_excel(data, output="assets.xlsx"):
-
     writer = pd.ExcelWriter(output, engine="openpyxl")
 
     severity_levels = ["critical", "high", "medium", "low"]
     sheet_created = False
+    
+    # We will store the structure of each sheet to know exactly where to merge later
+    sheet_merge_instructions = {}
 
     for sev in severity_levels:
-
         rows = [d for d in data if d["severity"] == sev]
 
         if not rows:
             continue
 
         formatted_rows = []
+        vuln_group = {}
 
         # ---------------------------
         # GROUPING (vuln → vlan → assets)
         # ---------------------------
-        vuln_group = {}
-
         for r in rows:
             vuln = r["vulnerability"]
             vlan = r["report"]
@@ -34,11 +34,21 @@ def export_to_excel(data, output="assets.xlsx"):
             })
 
         # ---------------------------
-        # BUILD ROWS (3 assets per row)
+        # BUILD ROWS & TRACK SPANS
         # ---------------------------
-        for vuln, vlan_dict in vuln_group.items():
-            for vlan, assets in vlan_dict.items():
-                assets = sorted(assets, key=lambda x: x["asset"])
+        # openpyxl is 1-based, and headers are row 1, so data starts at row 2
+        current_row = 2 
+        vuln_merges = []
+        vlan_merges = []
+
+        # Sort vulnerabilities to ensure a predictable, sorted output
+        for vuln in sorted(vuln_group.keys()):
+            vuln_start_row = current_row
+            
+            for vlan in sorted(vuln_group[vuln].keys()):
+                assets = sorted(vuln_group[vuln][vlan], key=lambda x: x["asset"])
+                vlan_start_row = current_row
+                
                 for i in range(0, len(assets), 3):
                     chunk = assets[i:i+3]
 
@@ -50,12 +60,24 @@ def export_to_excel(data, output="assets.xlsx"):
                         "Asset 3": chunk[2]["asset"] if len(chunk) > 2 else "",
                         "Status": "Plugin Available" if any(c["status"] for c in chunk) else ""
                     })
-        formatted_rows = sorted(
-            formatted_rows,
-            key=lambda x: (x["Vulnerability"], x["VLAN"])
-        )
+                    current_row += 1
+                
+                # Save the start and end row for this specific VLAN
+                if current_row - 1 > vlan_start_row:
+                    vlan_merges.append((vlan_start_row, current_row - 1))
+            
+            # Save the start and end row for this specific Vulnerability
+            if current_row - 1 > vuln_start_row:
+                vuln_merges.append((vuln_start_row, current_row - 1))
+
         df = pd.DataFrame(formatted_rows)
         df.to_excel(writer, sheet_name=sev.capitalize(), index=False)
+        
+        # Store instructions for the styling block
+        sheet_merge_instructions[sev.capitalize()] = {
+            "vuln_merges": vuln_merges,
+            "vlan_merges": vlan_merges
+        }
         sheet_created = True
 
     if not sheet_created:
@@ -66,7 +88,7 @@ def export_to_excel(data, output="assets.xlsx"):
     writer.close()
 
     # ---------------------------
-    # 🔥 STYLING + MERGING (FIXED)
+    # 🔥 STYLING + MERGING (SOLVED)
     # ---------------------------
     wb = load_workbook(output)
 
@@ -81,70 +103,36 @@ def export_to_excel(data, output="assets.xlsx"):
     )
 
     for sheet in wb.sheetnames:
-
+        if sheet == "Summary":
+            continue
+            
         ws = wb[sheet]
+        instructions = sheet_merge_instructions.get(sheet, {"vuln_merges": [], "vlan_merges": []})
 
-        current_vuln = None
-        vuln_start = 2
-        current_status = None
-        status_start = 2
-        current_vlan = None
-        vlan_start = 2
-
+        # Apply basic cell colors and borders first
         toggle = False
-
-        for row in range(2, ws.max_row + 2):
-
-            vuln = ws.cell(row=row, column=1).value
-            vlan = ws.cell(row=row, column=2).value
-
-            # -----------------------
-            # VULNERABILITY MERGE (FIXED)
-            # -----------------------
-            if vuln != current_vuln:
-
-                if current_vuln is not None:
-                    ws.merge_cells(start_row=vuln_start, start_column=1,
-                                   end_row=row-1, end_column=1)
-                    ws.merge_cells(start_row=status_start, start_column=6,
-                       end_row=row-1, end_column=6)
-
-                current_vuln = vuln
-                vuln_start = row
+        current_vuln_val = None
+        
+        for row in range(2, ws.max_row + 1):
+            vuln_val = ws.cell(row=row, column=1).value
+            if vuln_val != current_vuln_val:
                 toggle = not toggle
-                status_start = row
-                current_vlan = None  # 🔥 RESET VLAN
-
-            # -----------------------
-            # VLAN MERGE (FIXED)
-            # -----------------------
-            if vlan != current_vlan:
-
-                if current_vlan is not None:
-                    ws.merge_cells(start_row=vlan_start, start_column=2,
-                                   end_row=row-1, end_column=2)
-
-                current_vlan = vlan
-                vlan_start = row
-
-            # -----------------------
-            # STRIP COLOR + BORDER
-            # -----------------------
+                current_vuln_val = vuln_val
+                
             fill = fill1 if toggle else fill2
-
             for col in range(1, 7):
                 cell = ws.cell(row=row, column=col)
                 cell.fill = fill
                 cell.border = thin_border
 
-        # -----------------------
-        # FINAL MERGES
-        # -----------------------
-        ws.merge_cells(start_row=vuln_start, start_column=1,
-                       end_row=ws.max_row, end_column=1)
+        # Apply VLAN merges (Column 2)
+        for start, end in instructions["vlan_merges"]:
+            ws.merge_cells(start_row=start, start_column=2, end_row=end, end_column=2)
 
-        ws.merge_cells(start_row=vlan_start, start_column=2,
-                       end_row=ws.max_row, end_column=2)
+        # Apply Vulnerability (Col 1) and Status (Col 6) merges
+        for start, end in instructions["vuln_merges"]:
+            ws.merge_cells(start_row=start, start_column=1, end_row=end, end_column=1)
+            ws.merge_cells(start_row=start, start_column=6, end_row=end, end_column=6)
 
         # -----------------------
         # HEADER STYLE
@@ -155,19 +143,17 @@ def export_to_excel(data, output="assets.xlsx"):
             cell.border = thin_border
 
         # -----------------------
-        # COLUMN WIDTH
+        # COLUMN WIDTH & ALIGNMENT
         # -----------------------
         widths = [45, 28, 28, 28, 28, 15]
         for i, w in enumerate(widths, start=1):
             ws.column_dimensions[chr(64+i)].width = w
 
-        # ALIGNMENT
-        for cell in ws["A"]:
-            cell.alignment = Alignment(vertical="center", wrap_text=True)
-
-        for cell in ws["B"]:
-            cell.alignment = Alignment(vertical="center")
+        for row in range(1, ws.max_row + 1):
+            for col in range(1, 7):
+                cell = ws.cell(row=row, column=col)
+                # Keep top-left alignment for merged cells to look good
+                cell.alignment = Alignment(vertical="center", horizontal="left", wrap_text=True)
 
     wb.save(output)
-
-    print("[+] FINAL PERFECT Excel generated 🚀")
+    print("[+] Excel generated 🚀")
